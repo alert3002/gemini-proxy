@@ -84,4 +84,5 @@ def gemini():
 
     parts = candidates[0].get("content", {}).get("parts") or []
     text = "".join([p.get("text", "") for p in parts if p.get("text")])
+
     return jsonify(text=text)
