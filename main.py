@@ -29,8 +29,10 @@ def gemini():
 
     proxy_token = _get_env("PROXY_TOKEN")
     got = (request.headers.get("X-Proxy-Token") or "").strip()
-    if not proxy_token or got != proxy_token:
-        return jsonify(detail="Forbidden"), 403
+    # Токенро фақат барои дархости аслӣ (POST) месанҷем
+    if request.method == "POST":
+        if not proxy_token or got != proxy_token:
+            return jsonify(detail="Forbidden"), 403
 
     data = request.get_json(silent=True) or {}
     image_b64 = (data.get("image") or "").strip()
