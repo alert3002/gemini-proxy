@@ -23,6 +23,10 @@ def _get_env(name: str) -> str:
 
 @app.route("/gemini", methods=["POST", "OPTIONS"])
 def gemini():
+    # Барои CORS preflight (OPTIONS) ягон токен талаб намекунем
+    if request.method == "OPTIONS":
+        return "", 200
+
     proxy_token = _get_env("PROXY_TOKEN")
     got = (request.headers.get("X-Proxy-Token") or "").strip()
     if not proxy_token or got != proxy_token:
