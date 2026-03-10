@@ -5,8 +5,8 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 
-# Моделро аз v1beta ба v1 мегузорем, чун 1.5/2.0 дар v1beta дигар нест
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent"
+# Модели 1.5 дигар дастрас нест → ба gemini-2.0-flash дар v1 мегузарем
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent"
 
 # CORS барои браузер (Vite localhost + production доменҳо)
 # Агар хоҳед маҳдуд кунед, origins-ро ба рӯйхат иваз кунед.
