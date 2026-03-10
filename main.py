@@ -5,8 +5,8 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 
-# Модели 1.5 дигар дастрас нест → ба gemini-2.0-flash дар v1 мегузарем
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent"
+# Google Cloud Vision OCR endpoint
+VISION_URL = "https://vision.googleapis.com/v1/images:annotate"
 
 # CORS барои браузер (Vite localhost + production доменҳо)
 # Агар хоҳед маҳдуд кунед, origins-ро ба рӯйхат иваз кунед.
@@ -37,51 +37,61 @@ def gemini():
 
     data = request.get_json(silent=True) or {}
     image_b64 = (data.get("image") or "").strip()
-    prompt = (data.get("prompt") or "").strip()
+    # prompt ҳоло барои Vision истифода намешавад, ихтиёрӣ аст
+    # prompt = (data.get("prompt") or "").strip()
 
-    if not image_b64 or not prompt:
-        return jsonify(detail="image and prompt required"), 400
+    if not image_b64:
+        return jsonify(detail="image required"), 400
 
-    gemini_key = _get_env("GEMINI_API_KEY")
-    if not gemini_key:
-        return jsonify(detail="GEMINI_API_KEY not configured"), 503
+    vision_key = _get_env("VISION_API_KEY") or _get_env("GEMINI_API_KEY")
+    if not vision_key:
+        return jsonify(detail="VISION_API_KEY not configured"), 503
 
     payload = {
-        "contents": [{
-            "role": "user",
-            "parts": [{
-                "inline_data": {"mime_type": "image/jpeg", "data": image_b64}
-            }]
-        }],
-        "systemInstruction": {"parts": [{"text": prompt}]}
+        "requests": [
+            {
+                "image": {"content": image_b64},
+                "features": [{"type": "TEXT_DETECTION"}],
+            }
+        ]
     }
 
     try:
         r = requests.post(
-            GEMINI_URL,
-            headers={"x-goog-api-key": gemini_key},
+            f"{VISION_URL}?key={vision_key}",
             json=payload,
             timeout=60,
         )
     except requests.RequestException as e:
         return jsonify(detail=str(e)), 502
 
-    if r.status_code == 429:
-        return jsonify(detail="Gemini quota exceeded"), 429
-
     if r.status_code != 200:
         try:
             j = r.json()
-            msg = j.get("error", {}).get("message") or j.get("message") or r.text
+            msg = (
+                j.get("error", {}).get("message")
+                or j.get("message")
+                or r.text
+            )
         except Exception:
             msg = r.text
         return jsonify(detail=msg, upstream_status=r.status_code), 502
 
     body = r.json()
-    candidates = body.get("candidates") or []
-    if not candidates:
-        return jsonify(detail="No candidates"), 502
+    responses = body.get("responses") or []
+    if not responses:
+        return jsonify(detail="Empty Vision response"), 502
 
-    parts = candidates[0].get("content", {}).get("parts") or []
-    text = "".join([p.get("text", "") for p in parts if p.get("text")])
+    first = responses[0] or {}
+    text = (
+        (first.get("fullTextAnnotation") or {}).get("text")
+        or (
+            (first.get("textAnnotations") or [{}])[0].get("description")
+            or ""
+        )
+    ).strip()
+
+    if not text:
+        return jsonify(detail="No text found"), 502
+
     return jsonify(text=text)
