@@ -5,7 +5,7 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 # CORS барои браузер (Vite localhost + production доменҳо)
 # Агар хоҳед маҳдуд кунед, origins-ро ба рӯйхат иваз кунед.
