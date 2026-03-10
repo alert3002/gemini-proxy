@@ -1,11 +1,20 @@
 import os
 import requests
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 app = Flask(__name__)
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
-ALLOWED_ORIGIN = "*"  # мумкин баъд ба доменҳои худ маҳдуд кунед
+
+# CORS барои браузер (Vite localhost + production доменҳо)
+# Агар хоҳед маҳдуд кунед, origins-ро ба рӯйхат иваз кунед.
+CORS(
+    app,
+    resources={r"/gemini": {"origins": "*"}},
+    allow_headers=["Content-Type", "X-Proxy-Token"],
+    methods=["POST", "OPTIONS"],
+)
 
 
 def _get_env(name: str) -> str:
@@ -14,11 +23,6 @@ def _get_env(name: str) -> str:
 
 @app.route("/gemini", methods=["POST", "OPTIONS"])
 def gemini():
-    # CORS preflight
-    if request.method == "OPTIONS":
-        resp = app.make_default_options_response()
-        return resp
-
     proxy_token = _get_env("PROXY_TOKEN")
     got = (request.headers.get("X-Proxy-Token") or "").strip()
     if not proxy_token or got != proxy_token:
@@ -74,13 +78,3 @@ def gemini():
     parts = candidates[0].get("content", {}).get("parts") or []
     text = "".join([p.get("text", "") for p in parts if p.get("text")])
     return jsonify(text=text)
-
-
-@app.after_request
-def add_cors_headers(response):
-    origin = request.headers.get("Origin")
-    response.headers["Access-Control-Allow-Origin"] = origin or ALLOWED_ORIGIN
-    response.headers["Vary"] = "Origin"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Proxy-Token"
-    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-    return response
